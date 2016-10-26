@@ -144,7 +144,9 @@ func Provider() terraform.ResourceProvider {
 
 		DataSourcesMap: map[string]*schema.Resource{
 			"aws_ami":                      dataSourceAwsAmi(),
+			"aws_availability_zone":        dataSourceAwsAvailabilityZone(),
 			"aws_availability_zones":       dataSourceAwsAvailabilityZones(),
+			"aws_billing_service_account":  dataSourceAwsBillingServiceAccount(),
 			"aws_caller_identity":          dataSourceAwsCallerIdentity(),
 			"aws_cloudformation_stack":     dataSourceAwsCloudFormationStack(),
 			"aws_ecs_container_definition": dataSourceAwsEcsContainerDefinition(),
@@ -152,7 +154,10 @@ func Provider() terraform.ResourceProvider {
 			"aws_iam_policy_document":      dataSourceAwsIamPolicyDocument(),
 			"aws_ip_ranges":                dataSourceAwsIPRanges(),
 			"aws_redshift_service_account": dataSourceAwsRedshiftServiceAccount(),
+			"aws_region":                   dataSourceAwsRegion(),
 			"aws_s3_bucket_object":         dataSourceAwsS3BucketObject(),
+			"aws_subnet":                   dataSourceAwsSubnet(),
+			"aws_vpc":                      dataSourceAwsVpc(),
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
@@ -234,6 +239,8 @@ func Provider() terraform.ResourceProvider {
 			"aws_elastictranscoder_preset":                 resourceAwsElasticTranscoderPreset(),
 			"aws_elb":                                      resourceAwsElb(),
 			"aws_elb_attachment":                           resourceAwsElbAttachment(),
+			"aws_emr_cluster":                              resourceAwsEMRCluster(),
+			"aws_emr_instance_group":                       resourceAwsEMRInstanceGroup(),
 			"aws_flow_log":                                 resourceAwsFlowLog(),
 			"aws_glacier_vault":                            resourceAwsGlacierVault(),
 			"aws_iam_access_key":                           resourceAwsIamAccessKey(),
@@ -254,6 +261,7 @@ func Provider() terraform.ResourceProvider {
 			"aws_iam_user_policy":                          resourceAwsIamUserPolicy(),
 			"aws_iam_user_ssh_key":                         resourceAwsIamUserSshKey(),
 			"aws_iam_user":                                 resourceAwsIamUser(),
+			"aws_iam_user_login_profile":                   resourceAwsIamUserLoginProfile(),
 			"aws_instance":                                 resourceAwsInstance(),
 			"aws_internet_gateway":                         resourceAwsInternetGateway(),
 			"aws_key_pair":                                 resourceAwsKeyPair(),

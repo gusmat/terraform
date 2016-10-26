@@ -2970,6 +2970,7 @@ func TestSchemaMap_DiffSuppress(t *testing.T) {
 
 			Err: false,
 		},
+
 		"#1 - Don't suppress diff by returning false": {
 			Schema: map[string]*Schema{
 				"availability_zone": {
@@ -2999,29 +3000,80 @@ func TestSchemaMap_DiffSuppress(t *testing.T) {
 
 			Err: false,
 		},
+
+		"Default with suppress makes no diff": {
+			Schema: map[string]*Schema{
+				"availability_zone": {
+					Type:     TypeString,
+					Optional: true,
+					Default:  "foo",
+					DiffSuppressFunc: func(k, old, new string, d *ResourceData) bool {
+						return true
+					},
+				},
+			},
+
+			State: nil,
+
+			Config: map[string]interface{}{},
+
+			ExpectedDiff: nil,
+
+			Err: false,
+		},
+
+		"Default with false suppress makes diff": {
+			Schema: map[string]*Schema{
+				"availability_zone": {
+					Type:     TypeString,
+					Optional: true,
+					Default:  "foo",
+					DiffSuppressFunc: func(k, old, new string, d *ResourceData) bool {
+						return false
+					},
+				},
+			},
+
+			State: nil,
+
+			Config: map[string]interface{}{},
+
+			ExpectedDiff: &terraform.InstanceDiff{
+				Attributes: map[string]*terraform.ResourceAttrDiff{
+					"availability_zone": {
+						Old: "",
+						New: "foo",
+					},
+				},
+			},
+
+			Err: false,
+		},
 	}
 
 	for tn, tc := range cases {
-		c, err := config.NewRawConfig(tc.Config)
-		if err != nil {
-			t.Fatalf("#%q err: %s", tn, err)
-		}
-
-		if len(tc.ConfigVariables) > 0 {
-			if err := c.Interpolate(tc.ConfigVariables); err != nil {
+		t.Run(tn, func(t *testing.T) {
+			c, err := config.NewRawConfig(tc.Config)
+			if err != nil {
 				t.Fatalf("#%q err: %s", tn, err)
 			}
-		}
 
-		d, err := schemaMap(tc.Schema).Diff(
-			tc.State, terraform.NewResourceConfig(c))
-		if err != nil != tc.Err {
-			t.Fatalf("#%q err: %s", tn, err)
-		}
+			if len(tc.ConfigVariables) > 0 {
+				if err := c.Interpolate(tc.ConfigVariables); err != nil {
+					t.Fatalf("#%q err: %s", tn, err)
+				}
+			}
 
-		if !reflect.DeepEqual(tc.ExpectedDiff, d) {
-			t.Fatalf("#%q:\n\nexpected:\n%#v\n\ngot:\n%#v", tn, tc.ExpectedDiff, d)
-		}
+			d, err := schemaMap(tc.Schema).Diff(
+				tc.State, terraform.NewResourceConfig(c))
+			if err != nil != tc.Err {
+				t.Fatalf("#%q err: %s", tn, err)
+			}
+
+			if !reflect.DeepEqual(tc.ExpectedDiff, d) {
+				t.Fatalf("#%q:\n\nexpected:\n%#v\n\ngot:\n%#v", tn, tc.ExpectedDiff, d)
+			}
+		})
 	}
 }
 
@@ -3866,6 +3918,97 @@ func TestSchemaSet_ValidateMaxItems(t *testing.T) {
 			Diff:   nil,
 			Err:    false,
 			Errors: nil,
+		},
+	}
+
+	for tn, tc := range cases {
+		c, err := config.NewRawConfig(tc.Config)
+		if err != nil {
+			t.Fatalf("%q: err: %s", tn, err)
+		}
+		_, es := schemaMap(tc.Schema).Validate(terraform.NewResourceConfig(c))
+
+		if len(es) > 0 != tc.Err {
+			if len(es) == 0 {
+				t.Errorf("%q: no errors", tn)
+			}
+
+			for _, e := range es {
+				t.Errorf("%q: err: %s", tn, e)
+			}
+
+			t.FailNow()
+		}
+
+		if tc.Errors != nil {
+			if !reflect.DeepEqual(es, tc.Errors) {
+				t.Fatalf("%q: expected: %q\ngot: %q", tn, tc.Errors, es)
+			}
+		}
+	}
+}
+
+func TestSchemaSet_ValidateMinItems(t *testing.T) {
+	cases := map[string]struct {
+		Schema          map[string]*Schema
+		State           *terraform.InstanceState
+		Config          map[string]interface{}
+		ConfigVariables map[string]string
+		Diff            *terraform.InstanceDiff
+		Err             bool
+		Errors          []error
+	}{
+		"#0": {
+			Schema: map[string]*Schema{
+				"aliases": &Schema{
+					Type:     TypeSet,
+					Optional: true,
+					MinItems: 2,
+					Elem:     &Schema{Type: TypeString},
+				},
+			},
+			State: nil,
+			Config: map[string]interface{}{
+				"aliases": []interface{}{"foo", "bar"},
+			},
+			Diff:   nil,
+			Err:    false,
+			Errors: nil,
+		},
+		"#1": {
+			Schema: map[string]*Schema{
+				"aliases": &Schema{
+					Type:     TypeSet,
+					Optional: true,
+					Elem:     &Schema{Type: TypeString},
+				},
+			},
+			State: nil,
+			Config: map[string]interface{}{
+				"aliases": []interface{}{"foo", "bar"},
+			},
+			Diff:   nil,
+			Err:    false,
+			Errors: nil,
+		},
+		"#2": {
+			Schema: map[string]*Schema{
+				"aliases": &Schema{
+					Type:     TypeSet,
+					Optional: true,
+					MinItems: 2,
+					Elem:     &Schema{Type: TypeString},
+				},
+			},
+			State: nil,
+			Config: map[string]interface{}{
+				"aliases": []interface{}{"foo"},
+			},
+			Diff: nil,
+			Err:  true,
+			Errors: []error{
+				fmt.Errorf("aliases: attribute supports 2 item as a minimum, config has 1 declared"),
+			},
 		},
 	}
 

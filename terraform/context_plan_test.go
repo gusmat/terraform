@@ -1088,6 +1088,10 @@ func TestContext2Plan_dataResourceBecomesComputed(t *testing.T) {
 		t.Fatalf("missing diff for data.aws_data_resource.foo")
 	}
 
+	// This is added by the diff but we want to verify that we got
+	// the same diff as above minus the dynamic stuff.
+	delete(iDiff.Attributes, "id")
+
 	if same, _ := p.ReadDataDiffReturn.Same(iDiff); !same {
 		t.Fatalf(
 			"incorrect diff for data.data_resource.foo\ngot:  %#v\nwant: %#v",
@@ -1578,7 +1582,7 @@ func TestContext2Plan_moduleDestroy(t *testing.T) {
 	actual := strings.TrimSpace(plan.String())
 	expected := strings.TrimSpace(testTerraformPlanModuleDestroyStr)
 	if actual != expected {
-		t.Fatalf("bad:\n%s", actual)
+		t.Fatalf("bad:\n%s\n\nexpected:\n\n%s", actual, expected)
 	}
 }
 
@@ -1630,7 +1634,7 @@ func TestContext2Plan_moduleDestroyCycle(t *testing.T) {
 	actual := strings.TrimSpace(plan.String())
 	expected := strings.TrimSpace(testTerraformPlanModuleDestroyCycleStr)
 	if actual != expected {
-		t.Fatalf("bad:\n%s", actual)
+		t.Fatalf("bad:\n%s\n\nexpected:\n\n%s", actual, expected)
 	}
 }
 
@@ -1680,7 +1684,7 @@ func TestContext2Plan_moduleDestroyMultivar(t *testing.T) {
 	actual := strings.TrimSpace(plan.String())
 	expected := strings.TrimSpace(testTerraformPlanModuleDestroyMultivarStr)
 	if actual != expected {
-		t.Fatalf("bad:\n%s", actual)
+		t.Fatalf("bad:\n%s\n\nexpected:\n\n%s", actual, expected)
 	}
 }
 

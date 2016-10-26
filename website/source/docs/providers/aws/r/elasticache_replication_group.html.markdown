@@ -67,5 +67,14 @@ Please note that setting a `snapshot_retention_limit` is not supported on cache.
 
 The following attributes are exported:
 
-* `id` - The ID of the ElastiCache Replication Group
-* `primary_endpoint_address` - The address of the endpoint for the primary node in the replication group
+* `id` - The ID of the ElastiCache Replication Group.
+* `primary_endpoint_address` - The address of the endpoint for the primary node in the replication group. If Redis, only present when cluster mode is disabled.
+* `configuration_endpoint_address` - (Redis only) The address of the replication group configuration endpoint when cluster mode is enabled.
+
+## Import
+
+ElastiCache Replication Groups can be imported using the `replication_group_id`, e.g.
+
+```
+$ terraform import aws_elasticache_replication_group.my_replication_group replication-group-1
+```

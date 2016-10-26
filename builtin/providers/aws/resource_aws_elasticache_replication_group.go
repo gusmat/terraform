@@ -47,6 +47,11 @@ func resourceAwsElasticacheReplicationGroup() *schema.Resource {
 		Computed: true,
 	}
 
+	resourceSchema["configuration_endpoint_address"] = &schema.Schema{
+		Type:     schema.TypeString,
+		Computed: true,
+	}
+
 	resourceSchema["engine"].Required = false
 	resourceSchema["engine"].Optional = true
 	resourceSchema["engine"].Default = "redis"
@@ -57,6 +62,9 @@ func resourceAwsElasticacheReplicationGroup() *schema.Resource {
 		Read:   resourceAwsElasticacheReplicationGroupRead,
 		Update: resourceAwsElasticacheReplicationGroupUpdate,
 		Delete: resourceAwsElasticacheReplicationGroupDelete,
+		Importer: &schema.ResourceImporter{
+			State: schema.ImportStatePassthrough,
+		},
 
 		Schema: resourceSchema,
 	}
@@ -192,7 +200,17 @@ func resourceAwsElasticacheReplicationGroupRead(d *schema.ResourceData, meta int
 		return nil
 	}
 
-	d.Set("automatic_failover_enabled", rgp.AutomaticFailover)
+	if rgp.AutomaticFailover != nil {
+		switch strings.ToLower(*rgp.AutomaticFailover) {
+		case "disabled", "disabling":
+			d.Set("automatic_failover_enabled", false)
+		case "enabled", "enabling":
+			d.Set("automatic_failover_enabled", true)
+		default:
+			log.Printf("Unknown AutomaticFailover state %s", *rgp.AutomaticFailover)
+		}
+	}
+
 	d.Set("replication_group_description", rgp.Description)
 	d.Set("number_cache_clusters", len(rgp.MemberClusters))
 	d.Set("replication_group_id", rgp.ReplicationGroupId)
@@ -217,15 +235,21 @@ func resourceAwsElasticacheReplicationGroupRead(d *schema.ResourceData, meta int
 		d.Set("engine", c.Engine)
 		d.Set("engine_version", c.EngineVersion)
 		d.Set("subnet_group_name", c.CacheSubnetGroupName)
-		d.Set("security_group_names", c.CacheSecurityGroups)
-		d.Set("security_group_ids", c.SecurityGroups)
-		d.Set("parameter_group_name", c.CacheParameterGroup)
+		d.Set("security_group_names", flattenElastiCacheSecurityGroupNames(c.CacheSecurityGroups))
+		d.Set("security_group_ids", flattenElastiCacheSecurityGroupIds(c.SecurityGroups))
+		if c.CacheParameterGroup != nil {
+			d.Set("parameter_group_name", c.CacheParameterGroup.CacheParameterGroupName)
+		}
 		d.Set("maintenance_window", c.PreferredMaintenanceWindow)
-		d.Set("snapshot_window", c.SnapshotWindow)
-		d.Set("snapshot_retention_limit", c.SnapshotRetentionLimit)
-
-		d.Set("primary_endpoint_address", rgp.NodeGroups[0].PrimaryEndpoint.Address)
-
+		d.Set("snapshot_window", rgp.SnapshotWindow)
+		d.Set("snapshot_retention_limit", rgp.SnapshotRetentionLimit)
+		if rgp.ConfigurationEndpoint != nil {
+			d.Set("port", rgp.ConfigurationEndpoint.Port)
+			d.Set("configuration_endpoint_address", rgp.ConfigurationEndpoint.Address)
+		} else {
+			d.Set("port", rgp.NodeGroups[0].PrimaryEndpoint.Port)
+			d.Set("primary_endpoint_address", rgp.NodeGroups[0].PrimaryEndpoint.Address)
+		}
 	}
 
 	return nil
@@ -275,7 +299,7 @@ func resourceAwsElasticacheReplicationGroupUpdate(d *schema.ResourceData, meta i
 	}
 
 	if d.HasChange("parameter_group_name") {
-		params.CacheParameterGroupName = aws.String(d.Get("cache_parameter_group_name").(string))
+		params.CacheParameterGroupName = aws.String(d.Get("parameter_group_name").(string))
 		requestUpdate = true
 	}
 

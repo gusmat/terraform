@@ -23,12 +23,17 @@ will be rendered as a literal `${foo}`.
 
 ## Available Variables
 
-**To reference user variables**, use the `var.` prefix followed by the
+**To reference user string variables**, use the `var.` prefix followed by the
 variable name. For example, `${var.foo}` will interpolate the
-`foo` variable value. If the variable is a map, then you
-can reference static keys in the map with the syntax
-`var.MAP["KEY"]`. For example, `${var.amis["us-east-1"]` would
-get the value of the `us-east-1` key within the `amis` map variable.
+`foo` variable value.
+
+**To reference user map variables**, the syntax is `var.MAP["KEY"]`.  For
+example, `${var.amis["us-east-1"]}` would get the value of the `us-east-1`
+key within the `amis` map variable.
+
+**To reference user list variables**, the syntax is `["${var.LIST}"]`.  For
+example, `["${var.subnets}"]` would get the value of the `subnets` list, as a
+list. You can also return list elements by index: `${var.subnets[idx]}`.
 
 **To reference attributes of your own resource**, the syntax is
 `self.ATTRIBUTE`. For example `${self.private_ip_address}` will
@@ -63,6 +68,7 @@ cwd. `module` will interpolate the path to the current module. `root`
 will interpolate the path of the root module. In general, you probably
 want the `path.module` variable.
 
+<a id="functions"></a>
 ## Built-in Functions
 
 Terraform ships with built-in functions. Functions are called with
@@ -246,6 +252,14 @@ The supported built-in functions are:
     returned by the `keys` function. This function only works on flat maps and
     will return an error for maps that include nested lists or maps.
 
+  * `zipmap(list, list)` - Creates a map from a list of keys and a list of
+      values. The keys must all be of type string, and the length of the lists
+      must be the same.
+      For example, to output a mapping of AWS IAM user names to the fingerprint
+      of the key used to encrypt their initial password, you might use:
+      `zipmap(aws_iam_user.users.*.name, aws_iam_user_login_profile.users.*.key_fingerprint)`.
+
+<a id="templates"></a>
 ## Templates
 
 Long strings can be managed using templates. [Templates](/docs/providers/template/index.html) are [data-sources](/docs/configuration/data-sources.html) defined by a filename and some variables to use during interpolation. They have a computed `rendered` attribute containing the result.
@@ -308,9 +322,8 @@ resource "aws_instance" "web" {
 With this, we will build a list of `template_file.web_init` data sources which we can
 use in combination with our list of `aws_instance.web` resources.
 
-## Math
-
 <a id="math"></a>
+## Math
 
 Simple math can be performed in interpolations:
 

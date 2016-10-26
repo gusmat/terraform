@@ -22,7 +22,19 @@ import (
 const fixtureDir = "./test-fixtures"
 
 func TestMain(m *testing.M) {
+	// Experimental features
+	xNewApply := flag.Bool("Xnew-apply", false, "Experiment: new apply graph")
+	xNewDestroy := flag.Bool("Xnew-destroy", false, "Experiment: new destroy graph")
+
+	// Normal features
+	shadow := flag.Bool("shadow", true, "Enable shadow graph")
+
 	flag.Parse()
+
+	// Setup experimental features
+	X_newApply = *xNewApply
+	X_newDestroy = *xNewDestroy
+
 	if testing.Verbose() {
 		// if we're verbose, use the logging requested by TF_LOG
 		logging.SetOutput()
@@ -30,6 +42,15 @@ func TestMain(m *testing.M) {
 		// otherwise silence all logs
 		log.SetOutput(ioutil.Discard)
 	}
+
+	// Make sure shadow operations fail our real tests
+	contextFailOnShadowError = true
+
+	// Always DeepCopy the Diff on every Plan during a test
+	contextTestDeepCopyOnPlan = true
+
+	// Shadow the new graphs
+	contextTestShadow = *shadow
 
 	os.Exit(m.Run())
 }
@@ -236,6 +257,11 @@ aws_instance.foo:
   ID = foo
   num = 2
   type = aws_instance
+`
+
+const testTerraformApplyDataBasicStr = `
+data.null_data_source.testing:
+  ID = yo
 `
 
 const testTerraformApplyRefCountStr = `
@@ -1113,7 +1139,6 @@ DIFF:
 DESTROY: aws_instance.foo
 
 module.child:
-  DESTROY MODULE
   DESTROY: aws_instance.foo
 
 STATE:
@@ -1130,10 +1155,8 @@ const testTerraformPlanModuleDestroyCycleStr = `
 DIFF:
 
 module.a_module:
-  DESTROY MODULE
   DESTROY: aws_instance.a
 module.b_module:
-  DESTROY MODULE
   DESTROY: aws_instance.b
 
 STATE:
@@ -1150,7 +1173,6 @@ const testTerraformPlanModuleDestroyMultivarStr = `
 DIFF:
 
 module.child:
-  DESTROY MODULE
   DESTROY: aws_instance.foo.0
   DESTROY: aws_instance.foo.1
 
@@ -1467,4 +1489,18 @@ hcl_instance.hcltest:
   foo.0 = a
   foo.1 = b
   type = hcl_instance
+`
+
+const testTerraformRefreshDataRefDataStr = `
+data.null_data_source.bar:
+  ID = foo
+  bar = yes
+  type = null_data_source
+
+  Dependencies:
+    data.null_data_source.foo
+data.null_data_source.foo:
+  ID = foo
+  foo = yes
+  type = null_data_source
 `
