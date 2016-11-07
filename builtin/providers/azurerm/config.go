@@ -62,6 +62,7 @@ type ArmClient struct {
 	cdnProfilesClient  cdn.ProfilesClient
 	cdnEndpointsClient cdn.EndpointsClient
 
+	eventHubClient           eventhub.EventHubsClient
 	eventHubNamespacesClient eventhub.NamespacesClient
 
 	providers           resources.ProvidersClient
@@ -215,6 +216,12 @@ func (c *Config) getArmClient() (*ArmClient, error) {
 	agc.Authorizer = spt
 	agc.Sender = autorest.CreateSender(withRequestLogging())
 	client.appGatewayClient = agc
+
+	ehc := eventhub.NewEventHubsClient(c.SubscriptionID)
+	setUserAgent(&ehc.Client)
+	ehc.Authorizer = spt
+	ehc.Sender = autorest.CreateSender(withRequestLogging())
+	client.eventHubClient = ehc
 
 	ehnc := eventhub.NewNamespacesClient(c.SubscriptionID)
 	setUserAgent(&ehnc.Client)
